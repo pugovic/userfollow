@@ -1,0 +1,146 @@
+<?php
+
+/**
+ * @file
+ *   Main file for implements main hooks
+ */
+
+/**
+ * Implements hook_menu()
+ */
+function userfollow_menu() {
+    $items['ajax/add/%/%'] = array(
+        'title' => 'Add user',
+        'page callback' => 'userfollow_user_add_to_follow_list',
+        'page arguments' => array(2, 3),
+        'access arguments' => array('access content'),
+        'type' => MENU_CALLBACK,
+        'delivery callback' => 'ajax_deliver',
+    );
+    $items['ajax/remove/%/%'] = array(
+        'title' => 'Remove user',
+        'page callback' => 'userfollow_user_remove_from_follow_list',
+        'page arguments' => array(2, 3),
+        'access arguments' => array('access content'),
+        'type' => MENU_CALLBACK,
+        'delivery callback' => 'ajax_deliver',
+    );
+    return $items;
+}
+
+/*
+ *  Implements hook_menu_alter()
+ */
+
+function userfollow_menu_alter(&$items) {
+    $items['user/%user']['access callback'] = 'user_access';
+    $items['user/%user']['access arguments'] = array('post comments');
+}
+
+/*
+ *  Implements hook_user_view()
+ */
+
+function userfollow_user_view($account, $viewmode) {
+    global $user;
+
+    $path_module = drupal_get_path('module', 'userfollow');
+    drupal_add_css($path_module . '/userfollow.css');
+    if ($account->uid != $user->uid) {
+
+        drupal_add_js($path_module . '/userfollow.js', array('weight' => 2000, 'scope' => 'footer'));
+        drupal_add_js('misc/ajax.js');
+
+        $button = userfollow_check_in_bd($user->uid, $account->uid) ?
+                "<button onclick='userfollow_remove_user($user->uid,$account->uid)'>Remove from follow-list</button>" :
+                "<button onclick='userfollow_add_user($user->uid,$account->uid)'>Add to follow-list</button>";
+
+
+        $account->content['summary']['follow'] = array(
+            '#type' => 'user_profile_item',
+            '#title' => t('Add user to follow block'),
+            '#markup' => '<div id="button-wrapper">' . $button . '</div>',
+            '#attributes' => array('class' => array('follow')),
+        );
+    }
+}
+
+/*
+ *  Check follower in bd
+ * 
+ * @param $mainu
+ * Current user
+ * 
+ * @param $foll_user
+ * User in follow-list
+ */
+
+function userfollow_check_in_bd($mainu, $foll_user) {
+    $user_followers = db_query("SELECT * FROM {user_follows} WHERE fid = :fid AND uid = :uid", array(':fid' => $foll_user, ':uid' => $mainu))->fetchAllKeyed();
+    return count($user_followers);
+}
+
+/*
+ *  Add user to follow list
+ * 
+ * @param $user_id
+ * Current user
+ * 
+ * @param $fuid
+ * User in follow-list
+ */
+
+function userfollow_user_add_to_follow_list($user_id, $fuid) {
+    db_insert('user_follows')
+            ->fields(array(
+                'fid' => $fuid,
+                'uid' => $user_id,
+            ))
+            ->execute();
+
+    $result = array(
+        '#type' => 'ajax',
+        '#commands' => array(
+            array(
+                'command' => 'user_add_answer',
+            ),
+            ajax_command_insert('#button-wrapper', "<div id=\"button-wrapper\"><button onclick='userfollow_remove_user($user_id,$fuid)'>Remove from follow-list</button></div>"),
+        ),
+    );
+    return $result;
+}
+
+/*
+ *  Remove user to follow list
+ * 
+ * @param $user_id
+ * Current user
+ * 
+ * @param $fuid
+ * User in follow-list
+ */
+
+function userfollow_user_remove_from_follow_list($user_id, $fuid) {
+    db_delete('user_follows')
+            ->condition('fid', $fuid)
+            ->condition('uid', $user_id)
+            ->execute();
+
+    $result = array(
+        '#type' => 'ajax',
+        '#commands' => array(
+            array(
+                'command' => 'user_remove_answer',
+            ),
+            ajax_command_insert('#button-wrapper', "<div id=\"button-wrapper\"><button onclick='userfollow_add_user($user_id,$fuid)'>Add to follow-list</button></div>"),
+        ),
+    );
+    return $result;
+}
+
+/**
+ * Implements of hook_views_api().
+ */
+function userfollow_views_api() {
+    return array('api' => 3);
+}

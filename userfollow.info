@@ -1,0 +1,14 @@
+name = User follow
+description = Adds user to follow-list
+package = CUSTOM
+version = VERSION
+core = 7.x
+dependencies[] = views
+
+
+
+
+
+
+
+

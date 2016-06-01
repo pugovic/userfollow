@@ -1,0 +1,41 @@
+<?php
+
+/**
+ * @file
+ * Install, update and uninstall functions for the syslog module.
+ */
+
+/**
+ * Implements hook_schema().
+ */
+function userfollow_schema() {
+
+    $schema['user_follows'] = array(
+        'description' => 'Follow user',
+        'fields' => array(
+            'fuid' => array(
+                'type' => 'serial',
+                'unsigned' => TRUE,
+                'not null' => TRUE,
+                'description' => 'Primary Key: Unique follow ID.',
+            ),
+            'fid' => array(
+                'type' => 'int',
+                'not null' => TRUE,
+                'default' => 0,
+                'description' => 'Ids users to follows.',
+            ),
+            'uid' => array(
+                'type' => 'int',
+                'not null' => TRUE,
+                'default' => 0,
+                'description' => 'Current user',
+            ),
+        ),
+        'unique keys' => array(
+        ),
+        'primary key' => array('fuid'),
+    );
+
+    return $schema;
+}
